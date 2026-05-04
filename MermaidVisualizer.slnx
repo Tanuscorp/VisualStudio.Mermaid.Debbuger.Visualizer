@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/MermaidDebugVisualizer/MermaidDebugVisualizer.csproj">
+      <Deploy Solution="Debug|*" />
+    </Project>
+    <Project Path="src/MermaidRenderer/MermaidRenderer.csproj" />
+  </Folder>
+</Solution>
