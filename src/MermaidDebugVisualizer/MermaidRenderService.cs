@@ -1,6 +1,7 @@
 namespace Mermaid.DebugVisualizer;
 
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 
 using Naiad;
 
@@ -15,6 +16,35 @@ internal sealed class MermaidRenderService : IDisposable
 {
     private static readonly string TempDir = Path.Combine(Path.GetTempPath(), "MermaidVisualizer");
     private bool disposed;
+
+    static MermaidRenderService()
+    {
+        // The VS extension runs out-of-process in the ServiceHub host. The host's DLL search path
+        // does not include the extension's directory, so libSkiaSharp.dll cannot be found by name.
+        // Pre-loading it by full path puts it in the process module list; SkiaSharp's subsequent
+        // load-by-name call then finds the already-loaded module.
+        var dir = Path.GetDirectoryName(typeof(MermaidRenderService).Assembly.Location);
+        if (dir is null)
+            return;
+
+        var arch = RuntimeInformation.ProcessArchitecture switch
+        {
+            Architecture.X64 => "win-x64",
+            Architecture.Arm64 => "win-arm64",
+            Architecture.X86 => "win-x86",
+            _ => null,
+        };
+
+        List<string> candidates = [Path.Combine(dir, "libSkiaSharp.dll"), Path.Combine(dir, "libHarfBuzzSharp.dll")];
+        if (arch is not null)
+        {
+            candidates.Add(Path.Combine(dir, "runtimes", arch, "native", "libSkiaSharp.dll"));
+            candidates.Add(Path.Combine(dir, "runtimes", arch, "native", "libHarfBuzzSharp.dll"));
+        }
+
+        foreach (var path in candidates.Where(File.Exists))
+            _ = NativeLibrary.TryLoad(path, out _);
+    }
 
     public MermaidRenderService()
         => Directory.CreateDirectory(TempDir);
@@ -63,22 +93,23 @@ internal sealed class MermaidRenderService : IDisposable
     ///     Renders a Mermaid diagram to a PNG file.
     ///     Returns the file path, or null if rendering fails.
     /// </summary>
-    public string? RenderToPng(string mermaidSource)
+    public (string? png, string? svg) RenderToPng(string mermaidSource)
     {
         var svg = this.RenderToSvg(mermaidSource);
         if (svg is null)
         {
-            return null;
+            return (null, null);
         }
 
         try
         {
-            return SvgToPng(svg);
+            var png = SvgToPng(svg);
+            return (png, svg);
         }
         catch (Exception ex)
         {
             Debug.WriteLine($"Error rendering Mermaid diagram to PNG: {ex}");
-            return null;
+            return (null, svg);
         }
     }
 

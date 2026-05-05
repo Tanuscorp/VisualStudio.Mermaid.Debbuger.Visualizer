@@ -29,7 +29,7 @@ internal sealed class MermaidDataContext : NotifyPropertyChangedObject
             this.HasMermaidContent = true;
 
             // Render synchronously (Naiad is fast, typically <200ms)
-            var pngPath = renderService.RenderToPng(content.Source);
+            var (pngPath, svgContent) = renderService.RenderToPng(content.Source);
             if (pngPath is not null)
             {
                 this.DiagramImageUri = new Uri(pngPath).AbsoluteUri;
@@ -38,7 +38,7 @@ internal sealed class MermaidDataContext : NotifyPropertyChangedObject
                                              ? "Mermaid diagram (extracted from Markdown)"
                                              : "Mermaid diagram";
 
-                this.svgContent = renderService.RenderToSvg(content.Source);
+                this.svgContent = svgContent;
             }
             else
             {

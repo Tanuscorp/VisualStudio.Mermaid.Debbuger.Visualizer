@@ -64,8 +64,19 @@ class DagreLayoutEngine : ILayoutEngine
     {
         var graph = new LayoutGraph();
 
+        // Child nodes of subgraphs are positioned manually inside their container
+        // after layout, so they are excluded from the Dagre layout graph.
+        var subgraphChildIds = diagram.Subgraphs
+                                      .SelectMany(sg => sg.NodeIds)
+                                      .ToHashSet();
+
         foreach (var node in diagram.Nodes)
         {
+            if (subgraphChildIds.Contains(node.Id))
+            {
+                continue;
+            }
+
             graph.AddNode(
                 new()
                 {
@@ -100,6 +111,12 @@ class DagreLayoutEngine : ILayoutEngine
             }
 
             node.Position = new(layoutNode.X, layoutNode.Y);
+        }
+
+        // Position subgraph child nodes inside their proxy container.
+        foreach (var subgraph in diagram.Subgraphs)
+        {
+            PositionSubgraphChildren(diagram, subgraph);
         }
 
         // Build edge lookup for O(1) access instead of O(n) FirstOrDefault per edge
@@ -195,5 +212,40 @@ class DagreLayoutEngine : ILayoutEngine
         var targetEdgeX = isHorizontal ? target.X - target.Width / 2 : target.X;
         var targetEdgeY = isHorizontal ? target.Y : target.Y - target.Height / 2;
         edge.Points.Add(new(targetEdgeX, targetEdgeY));
+    }
+
+    // Stack the child nodes of a subgraph vertically inside the proxy node's bounding box.
+    static void PositionSubgraphChildren(GraphDiagramBase diagram, Subgraph subgraph)
+    {
+        const double PaddingX = 15.0;
+        const double PaddingY = 15.0;
+        const double TitleHeight = 26.0;
+        const double ChildGap = 8.0;
+
+        var proxy = diagram.GetNode(subgraph.Id);
+        if (proxy is null)
+        {
+            return;
+        }
+
+        var children = subgraph.NodeIds
+                               .Select(id => diagram.GetNode(id))
+                               .Where(n => n is not null)
+                               .ToList();
+
+        if (children.Count == 0)
+        {
+            return;
+        }
+
+        var top = proxy.Position.Y - proxy.Height / 2 + TitleHeight + PaddingY;
+        var centerX = proxy.Position.X;
+        var currentY = top;
+
+        foreach (var child in children)
+        {
+            child!.Position = new(centerX, currentY + child.Height / 2);
+            currentY += child.Height + ChildGap;
+        }
     }
 }

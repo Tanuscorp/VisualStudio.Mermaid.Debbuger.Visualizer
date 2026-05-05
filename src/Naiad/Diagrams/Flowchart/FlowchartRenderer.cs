@@ -1,7 +1,5 @@
 namespace Naiad.Diagrams.Flowchart;
 
-using System.Net;
-
 public partial class FlowchartRenderer(ILayoutEngine? layoutEngine = null) : IDiagramRenderer<FlowchartModel>
 {
     // Mermaid.ink default colors
@@ -40,6 +38,49 @@ public partial class FlowchartRenderer(ILayoutEngine? layoutEngine = null) : IDi
             }
         }
 
+        // Size subgraph proxy nodes to contain all of their children.
+        const double SubgraphPaddingX = 20.0;
+        const double SubgraphPaddingY = 15.0;
+        const double SubgraphTitleHeight = 26.0;
+        const double SubgraphChildGap = 8.0;
+
+        var subgraphProxyIds = model.Subgraphs.Select(sg => sg.Id).ToHashSet();
+
+        foreach (var subgraph in model.Subgraphs)
+        {
+            var proxy = model.GetNode(subgraph.Id);
+            if (proxy is null)
+            {
+                continue;
+            }
+
+            var children = subgraph.NodeIds
+                                   .Select(id => model.GetNode(id))
+                                   .Where(n => n is not null)
+                                   .ToList();
+
+            if (children.Count == 0)
+            {
+                continue;
+            }
+
+            var containerWidth = children.Max(c => c!.Width) + 2 * SubgraphPaddingX;
+            var containerHeight = SubgraphTitleHeight
+                                  + children.Sum(c => c!.Height)
+                                  + (children.Count - 1) * SubgraphChildGap
+                                  + 2 * SubgraphPaddingY;
+
+            // Ensure the title fits
+            if (subgraph.Title is not null)
+            {
+                var titleSize = MeasureText(subgraph.Title, options.FontSize);
+                containerWidth = Math.Max(containerWidth, titleSize.Width + 2 * SubgraphPaddingX);
+            }
+
+            proxy.Width = containerWidth;
+            proxy.Height = containerHeight;
+        }
+
         // Run layout
         var layoutOptions = new LayoutOptions
         {
@@ -61,16 +102,31 @@ public partial class FlowchartRenderer(ILayoutEngine? layoutEngine = null) : IDi
         // Add mermaid.ink CSS styles
         builder.AddStyles(MermaidStyles.FlowchartStyles);
 
-        // Render edges first (behind nodes)
-        foreach (var edge in model.Edges)
+        // Render subgraph containers first (background layer)
+        foreach (var subgraph in model.Subgraphs)
         {
-            RenderEdge(builder, edge);
+            var proxy = model.GetNode(subgraph.Id);
+            if (proxy is not null)
+            {
+                RenderSubgraphContainer(builder, subgraph, proxy, options);
+            }
         }
 
-        // Render nodes
+        // Render edges (behind nodes)
+        foreach (var edge in model.Edges)
+        {
+            RenderEdge(builder, edge, options);
+        }
+
+        // Render nodes; skip subgraph proxy nodes — they are drawn as containers above.
         foreach (var node in model.Nodes)
         {
-            RenderNode(builder, node);
+            if (subgraphProxyIds.Contains(node.Id))
+            {
+                continue;
+            }
+
+            RenderNode(builder, node, options);
         }
 
         return builder.Build();
@@ -79,7 +135,7 @@ public partial class FlowchartRenderer(ILayoutEngine? layoutEngine = null) : IDi
     [GeneratedRegex("(fa[bsr]?):fa-([a-z0-9-]+)", RegexOptions.Compiled)]
     private static partial Regex IconPatternMyRegex();
 
-    private static void RenderNode(SvgBuilder builder, Node node)
+    private static void RenderNode(SvgBuilder builder, Node node, RenderOptions options)
     {
         var x = node.Position.X - node.Width / 2;
         var y = node.Position.Y - node.Height / 2;
@@ -92,20 +148,59 @@ public partial class FlowchartRenderer(ILayoutEngine? layoutEngine = null) : IDi
             nodeStroke,
             1);
 
-        // Render label with icon support
+        // Render label as native SVG text (works in both browser and PNG via Svg.Skia)
         var label = node.Label ?? node.Id;
-        var htmlLabel = ConvertIconsToHtml(label);
+        var textLabel = iconPattern.Replace(label, "").Trim();
+        if (string.IsNullOrEmpty(textLabel))
+            textLabel = label;
 
-        builder.AddForeignObject(
-            x,
-            y,
-            node.Width,
-            node.Height,
-            htmlLabel,
-            "nodeLabel");
+        builder.AddText(
+            node.Position.X,
+            node.Position.Y,
+            textLabel,
+            anchor: "middle",
+            baseline: "middle",
+            fontSize: options.FontSize,
+            fontFamily: options.FontFamily);
     }
 
-    private static void RenderEdge(SvgBuilder builder, Edge edge)
+    private const string subgraphFill = "#f9f9ff";
+    private const string subgraphStroke = "#9370DB";
+    private const string subgraphTitleColor = "#333333";
+
+    private static void RenderSubgraphContainer(SvgBuilder builder, Subgraph subgraph, Node proxy, RenderOptions options)
+    {
+        var x = proxy.Position.X - proxy.Width / 2;
+        var y = proxy.Position.Y - proxy.Height / 2;
+
+        builder.AddRect(
+            x,
+            y,
+            proxy.Width,
+            proxy.Height,
+            rx: 5,
+            fill: subgraphFill,
+            stroke: subgraphStroke,
+            strokeWidth: 1,
+            cssClass: "subgraph");
+
+        if (subgraph.Title is not null)
+        {
+            const double TitleHeight = 26.0;
+            builder.AddText(
+                x + 8,
+                y + TitleHeight / 2,
+                subgraph.Title,
+                anchor: "start",
+                baseline: "middle",
+                fontSize: options.FontSize * 0.85,
+                fontFamily: options.FontFamily,
+                fill: subgraphTitleColor,
+                cssClass: "subgraphLabel");
+        }
+    }
+
+    private static void RenderEdge(SvgBuilder builder, Edge edge, RenderOptions options)
     {
         if (edge.Points.Count < 2)
         {
@@ -169,56 +264,16 @@ public partial class FlowchartRenderer(ILayoutEngine? layoutEngine = null) : IDi
                 stroke: "none",
                 cssClass: "edgeLabel");
 
-            builder.AddForeignObject(
-                labelX - labelWidth / 2,
-                labelY - LabelHeight / 2,
-                labelWidth,
-                LabelHeight,
-                $"<p>{WebUtility.HtmlEncode(edge.Label)}</p>",
-                "edgeLabel");
+            builder.AddText(
+                labelX,
+                labelY,
+                edge.Label,
+                anchor: "middle",
+                baseline: "middle",
+                fontSize: options.FontSize,
+                fontFamily: options.FontFamily,
+                cssClass: "edgeLabel");
         }
-    }
-
-    /// <summary>
-    ///     Converts FontAwesome icon syntax (fa:fa-icon) to HTML elements.
-    /// </summary>
-    private static string ConvertIconsToHtml(string text)
-    {
-        if (!iconPattern.IsMatch(text))
-        {
-            return $"<p>{WebUtility.HtmlEncode(text)}</p>";
-        }
-
-        var span = text.AsSpan();
-
-        var html = new StringBuilder("<p>");
-        var lastIndex = 0;
-
-        foreach (var match in iconPattern.EnumerateMatches(text))
-        {
-            if (match.Index > lastIndex)
-            {
-                var textBefore = text[lastIndex..match.Index];
-                html.Append(WebUtility.HtmlEncode(textBefore));
-            }
-
-            var matched = span.Slice(match.Index, match.Length);
-            var colonIndex = matched.IndexOf(':');
-            var prefix = matched[..colonIndex];
-            var iconName = matched[(colonIndex + 4)..];
-            html.Append($"<i class=\"{prefix} fa-{iconName}\"></i>");
-
-            lastIndex = match.Index + match.Length;
-        }
-
-        // Add remaining text after last icon
-        if (lastIndex < text.Length)
-        {
-            html.Append(WebUtility.HtmlEncode(text[lastIndex..]));
-        }
-
-        html.Append("</p>");
-        return html.ToString();
     }
 
     private static Size MeasureText(ReadOnlySpan<char> text, double fontSize)

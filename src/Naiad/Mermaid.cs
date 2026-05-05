@@ -36,11 +36,11 @@ public static class Mermaid
             DiagramType.Architecture => RenderArchitecture(input, options),
             DiagramType.Radar => RenderRadar(input, options),
             DiagramType.Treemap => RenderTreemap(input, options),
-            _ => throw new MermaidException($"Unsupported diagram type: {diagramType}")
+            _ => throw new MermaidException($"Unsupported diagram type: {diagramType}"),
         };
     }
 
-    static DiagramType DetectDiagramType(string input)
+    private static DiagramType DetectDiagramType(string input)
     {
         var firstLine = input.TrimStart();
 
@@ -64,55 +64,79 @@ public static class Mermaid
 
         if (firstLine.StartsWith("pie", StringComparison.OrdinalIgnoreCase))
             return DiagramType.Pie;
+
         if (firstLine.StartsWith("flowchart", StringComparison.OrdinalIgnoreCase) ||
             firstLine.StartsWith("graph", StringComparison.OrdinalIgnoreCase))
             return DiagramType.Flowchart;
+
         if (firstLine.StartsWith("sequenceDiagram", StringComparison.OrdinalIgnoreCase))
             return DiagramType.Sequence;
+
         if (firstLine.StartsWith("classDiagram", StringComparison.OrdinalIgnoreCase))
             return DiagramType.Class;
+
         if (firstLine.StartsWith("stateDiagram", StringComparison.OrdinalIgnoreCase))
             return DiagramType.State;
+
         if (firstLine.StartsWith("erDiagram", StringComparison.OrdinalIgnoreCase))
             return DiagramType.EntityRelationship;
+
         if (firstLine.StartsWith("gantt", StringComparison.OrdinalIgnoreCase))
             return DiagramType.Gantt;
+
         if (firstLine.StartsWith("gitGraph", StringComparison.OrdinalIgnoreCase))
             return DiagramType.GitGraph;
+
         if (firstLine.StartsWith("mindmap", StringComparison.OrdinalIgnoreCase))
             return DiagramType.Mindmap;
+
         if (firstLine.StartsWith("timeline", StringComparison.OrdinalIgnoreCase))
             return DiagramType.Timeline;
+
         if (firstLine.StartsWith("journey", StringComparison.OrdinalIgnoreCase))
             return DiagramType.UserJourney;
+
         if (firstLine.StartsWith("quadrantChart", StringComparison.OrdinalIgnoreCase))
             return DiagramType.Quadrant;
+
         if (firstLine.StartsWith("xychart", StringComparison.OrdinalIgnoreCase))
             return DiagramType.XyChart;
+
         if (firstLine.StartsWith("sankey", StringComparison.OrdinalIgnoreCase))
             return DiagramType.Sankey;
+
         if (firstLine.StartsWith("block", StringComparison.OrdinalIgnoreCase))
             return DiagramType.Block;
+
         if (firstLine.StartsWith("packet", StringComparison.OrdinalIgnoreCase))
             return DiagramType.Packet;
+
         if (firstLine.StartsWith("kanban", StringComparison.OrdinalIgnoreCase))
             return DiagramType.Kanban;
+
         if (firstLine.StartsWith("architecture-beta", StringComparison.OrdinalIgnoreCase) ||
             firstLine.StartsWith("architecture", StringComparison.OrdinalIgnoreCase))
             return DiagramType.Architecture;
+
         if (firstLine.StartsWith("C4Context", StringComparison.OrdinalIgnoreCase))
             return DiagramType.C4Context;
+
         if (firstLine.StartsWith("C4Container", StringComparison.OrdinalIgnoreCase))
             return DiagramType.C4Container;
+
         if (firstLine.StartsWith("C4Component", StringComparison.OrdinalIgnoreCase))
             return DiagramType.C4Component;
+
         if (firstLine.StartsWith("C4Deployment", StringComparison.OrdinalIgnoreCase))
             return DiagramType.C4Deployment;
+
         if (firstLine.StartsWith("requirementDiagram", StringComparison.OrdinalIgnoreCase))
             return DiagramType.Requirement;
+
         if (firstLine.StartsWith("radar-beta", StringComparison.OrdinalIgnoreCase) ||
             firstLine.StartsWith("radar", StringComparison.OrdinalIgnoreCase))
             return DiagramType.Radar;
+
         if (firstLine.StartsWith("treemap-beta", StringComparison.OrdinalIgnoreCase) ||
             firstLine.StartsWith("treemap", StringComparison.OrdinalIgnoreCase))
             return DiagramType.Treemap;
@@ -121,9 +145,9 @@ public static class Mermaid
     }
 
     /// <summary>
-    /// Strips %%{init:...}%% configuration blocks from the beginning of input.
+    ///     Strips %%{init:...}%% configuration blocks from the beginning of input.
     /// </summary>
-    static string StripInitBlock(string input)
+    private static string StripInitBlock(string input)
     {
         var result = input.TrimStart();
 
@@ -139,14 +163,14 @@ public static class Mermaid
         return result;
     }
 
-    static string ToXml(SvgDocument svg)
+    private static string ToXml(SvgDocument svg)
     {
         var builder = new StringBuilder();
         svg.ToXml(builder);
         return builder.ToString();
     }
 
-    static string RenderPie(string input, RenderOptions options)
+    private static string RenderPie(string input, RenderOptions options)
     {
         var parser = new PieParser();
         var result = parser.Parse(input);
@@ -161,7 +185,7 @@ public static class Mermaid
         return ToXml(svg);
     }
 
-    static string RenderFlowchart(string input, RenderOptions options)
+    private static string RenderFlowchart(string input, RenderOptions options)
     {
         var parser = new FlowchartParser();
         var result = parser.Parse(input);
@@ -176,7 +200,7 @@ public static class Mermaid
         return ToXml(svg);
     }
 
-    static string RenderSequence(string input, RenderOptions options)
+    private static string RenderSequence(string input, RenderOptions options)
     {
         var parser = new SequenceParser();
         var result = parser.Parse(input);
@@ -191,7 +215,7 @@ public static class Mermaid
         return ToXml(svg);
     }
 
-    static string RenderClass(string input, RenderOptions options)
+    private static string RenderClass(string input, RenderOptions options)
     {
         var parser = new ClassParser();
         var result = parser.Parse(input);
@@ -206,7 +230,7 @@ public static class Mermaid
         return ToXml(svg);
     }
 
-    static string RenderState(string input, RenderOptions options)
+    private static string RenderState(string input, RenderOptions options)
     {
         var parser = new StateParser();
         var result = parser.Parse(input);
@@ -221,7 +245,7 @@ public static class Mermaid
         return ToXml(svg);
     }
 
-    static string RenderEntityRelationship(string input, RenderOptions options)
+    private static string RenderEntityRelationship(string input, RenderOptions options)
     {
         var parser = new ErParser();
         var result = parser.Parse(input);
@@ -236,7 +260,7 @@ public static class Mermaid
         return ToXml(svg);
     }
 
-    static string RenderGitGraph(string input, RenderOptions options)
+    private static string RenderGitGraph(string input, RenderOptions options)
     {
         var parser = new GitGraphParser();
         var result = parser.Parse(input);
@@ -251,7 +275,7 @@ public static class Mermaid
         return ToXml(svg);
     }
 
-    static string RenderGantt(string input, RenderOptions options)
+    private static string RenderGantt(string input, RenderOptions options)
     {
         var parser = new GanttParser();
         var result = parser.Parse(input);
@@ -266,7 +290,7 @@ public static class Mermaid
         return ToXml(svg);
     }
 
-    static string RenderMindmap(string input, RenderOptions options)
+    private static string RenderMindmap(string input, RenderOptions options)
     {
         var parser = new MindmapParser();
         var result = parser.Parse(input);
@@ -281,7 +305,7 @@ public static class Mermaid
         return ToXml(svg);
     }
 
-    static string RenderTimeline(string input, RenderOptions options)
+    private static string RenderTimeline(string input, RenderOptions options)
     {
         var parser = new TimelineParser();
         var result = parser.Parse(input);
@@ -296,7 +320,7 @@ public static class Mermaid
         return ToXml(svg);
     }
 
-    static string RenderUserJourney(string input, RenderOptions options)
+    private static string RenderUserJourney(string input, RenderOptions options)
     {
         var parser = new UserJourneyParser();
         var result = parser.Parse(input);
@@ -311,7 +335,7 @@ public static class Mermaid
         return ToXml(svg);
     }
 
-    static string RenderQuadrant(string input, RenderOptions options)
+    private static string RenderQuadrant(string input, RenderOptions options)
     {
         var parser = new QuadrantParser();
         var result = parser.Parse(input);
@@ -326,7 +350,7 @@ public static class Mermaid
         return ToXml(svg);
     }
 
-    static string RenderXyChart(string input, RenderOptions options)
+    private static string RenderXyChart(string input, RenderOptions options)
     {
         var parser = new XyChartParser();
         var result = parser.Parse(input);
@@ -341,7 +365,7 @@ public static class Mermaid
         return ToXml(svg);
     }
 
-    static string RenderSankey(string input, RenderOptions options)
+    private static string RenderSankey(string input, RenderOptions options)
     {
         var parser = new SankeyParser();
         var result = parser.Parse(input);
@@ -356,7 +380,7 @@ public static class Mermaid
         return ToXml(svg);
     }
 
-    static string RenderBlock(string input, RenderOptions options)
+    private static string RenderBlock(string input, RenderOptions options)
     {
         var parser = new BlockParser();
         var result = parser.Parse(input);
@@ -371,7 +395,7 @@ public static class Mermaid
         return ToXml(svg);
     }
 
-    static string RenderKanban(string input, RenderOptions options)
+    private static string RenderKanban(string input, RenderOptions options)
     {
         var parser = new KanbanParser();
         var result = parser.Parse(input);
@@ -386,7 +410,7 @@ public static class Mermaid
         return ToXml(svg);
     }
 
-    static string RenderPacket(string input, RenderOptions options)
+    private static string RenderPacket(string input, RenderOptions options)
     {
         var parser = new PacketParser();
         var result = parser.Parse(input);
@@ -401,7 +425,7 @@ public static class Mermaid
         return ToXml(svg);
     }
 
-    static string RenderC4(string input, RenderOptions options)
+    private static string RenderC4(string input, RenderOptions options)
     {
         var parser = new C4Parser();
         var result = parser.Parse(input);
@@ -416,7 +440,7 @@ public static class Mermaid
         return ToXml(svg);
     }
 
-    static string RenderRequirement(string input, RenderOptions options)
+    private static string RenderRequirement(string input, RenderOptions options)
     {
         var parser = new RequirementParser();
         var result = parser.Parse(input);
@@ -431,7 +455,7 @@ public static class Mermaid
         return ToXml(svg);
     }
 
-    static string RenderArchitecture(string input, RenderOptions options)
+    private static string RenderArchitecture(string input, RenderOptions options)
     {
         var parser = new ArchitectureParser();
         var result = parser.Parse(input);
@@ -446,7 +470,7 @@ public static class Mermaid
         return ToXml(svg);
     }
 
-    static string RenderRadar(string input, RenderOptions options)
+    private static string RenderRadar(string input, RenderOptions options)
     {
         var parser = new RadarParser();
         var result = parser.Parse(input);
@@ -461,7 +485,7 @@ public static class Mermaid
         return ToXml(svg);
     }
 
-    static string RenderTreemap(string input, RenderOptions options)
+    private static string RenderTreemap(string input, RenderOptions options)
     {
         var parser = new TreemapParser();
         var result = parser.Parse(input);
