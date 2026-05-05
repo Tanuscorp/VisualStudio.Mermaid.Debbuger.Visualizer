@@ -122,7 +122,7 @@ class ClassParser : IDiagramParser<ClassModel>
         var annotationLine = Try(AnnotationParser.Select<IClassBodyContent?>(_ => new AnnotationItem(_)));
         var methodLine = Try(MethodParser.Select<IClassBodyContent?>(_ => new MethodItem(_)));
         var memberLine = Try(MemberParser.Select<IClassBodyContent?>(_ => new MemberItem(_)));
-        var emptyLine = CommonParsers.InlineWhitespace.Then(CommonParsers.LineEnd)
+        var emptyLine = Try(CommonParsers.InlineWhitespace.Then(CommonParsers.LineEnd))
             .ThenReturn<IClassBodyContent?>(null);
 
         var contentLine = OneOf(annotationLine, methodLine, memberLine, emptyLine);

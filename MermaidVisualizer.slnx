@@ -4,5 +4,6 @@
       <Deploy Solution="Debug|*" />
     </Project>
     <Project Path="src/Naiad/Naiad.csproj" />
+    <Project Path="src/Naiad.Tests/Naiad.Tests.csproj" />
   </Folder>
 </Solution>

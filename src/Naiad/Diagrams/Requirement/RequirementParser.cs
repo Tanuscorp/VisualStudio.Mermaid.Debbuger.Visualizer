@@ -35,7 +35,7 @@ class RequirementParser : IDiagramParser<RequirementModel>
         from ___ in CommonParsers.InlineWhitespace
         from ____ in Char('{')
         from _____ in CommonParsers.LineEnd
-        from props in propertyParser.Many()
+        from props in Try(propertyParser).Many()
         from ______ in CommonParsers.InlineWhitespace
         from _______ in Char('}')
         from ________ in CommonParsers.InlineWhitespace
@@ -81,7 +81,7 @@ class RequirementParser : IDiagramParser<RequirementModel>
         from ____ in CommonParsers.InlineWhitespace
         from _____ in Char('{')
         from ______ in CommonParsers.LineEnd
-        from props in propertyParser.Many()
+        from props in Try(propertyParser).Many()
         from _______ in CommonParsers.InlineWhitespace
         from ________ in Char('}')
         from _________ in CommonParsers.InlineWhitespace
