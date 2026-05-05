@@ -29,7 +29,7 @@ internal sealed class MermaidDataContext : NotifyPropertyChangedObject
             this.HasMermaidContent = true;
 
             // Render synchronously (Naiad is fast, typically <200ms)
-            var (pngPath, svgContent) = renderService.RenderToPng(content.Source);
+            var (pngPath, svgContentRendered) = renderService.RenderToPng(content.Source);
             if (pngPath is not null)
             {
                 this.DiagramImageUri = new Uri(pngPath).AbsoluteUri;
@@ -38,7 +38,7 @@ internal sealed class MermaidDataContext : NotifyPropertyChangedObject
                                              ? "Mermaid diagram (extracted from Markdown)"
                                              : "Mermaid diagram";
 
-                this.svgContent = svgContent;
+                this.svgContent = svgContentRendered;
             }
             else
             {
@@ -49,6 +49,23 @@ internal sealed class MermaidDataContext : NotifyPropertyChangedObject
 
         this.OpenInBrowserCommand = new AsyncCommand(async (_, ct) => await this.OpenInBrowserAsync(ct));
         this.CopySourceCommand = new AsyncCommand(async (_, ct) => await this.CopySourceAsync(ct));
+        this.ZoomInCommand = new AsyncCommand((_, _) =>
+        {
+            this.ZoomLevel = Math.Min(Math.Round(this.ZoomLevel + 0.25, 2), 4.0);
+            return Task.CompletedTask;
+        });
+
+        this.ZoomOutCommand = new AsyncCommand((_, _) =>
+        {
+            this.ZoomLevel = Math.Max(Math.Round(this.ZoomLevel - 0.25, 2), 0.25);
+            return Task.CompletedTask;
+        });
+
+        this.ResetZoomCommand = new AsyncCommand((_, _) =>
+        {
+            this.ZoomLevel = 1.0;
+            return Task.CompletedTask;
+        });
     }
 
     [DataMember]
@@ -96,35 +113,53 @@ internal sealed class MermaidDataContext : NotifyPropertyChangedObject
     [DataMember]
     public IAsyncCommand CopySourceCommand { get; }
 
-    private Task OpenInBrowserAsync(CancellationToken ct)
+    [DataMember]
+    public IAsyncCommand ZoomInCommand { get; }
+
+    [DataMember]
+    public IAsyncCommand ZoomOutCommand { get; }
+
+    [DataMember]
+    public IAsyncCommand ResetZoomCommand { get; }
+
+    [DataMember]
+    public double ZoomLevel
+    {
+        get;
+        private set => this.SetProperty(ref field, value);
+    } = 1.0;
+
+    private async Task OpenInBrowserAsync(CancellationToken ct)
     {
         var htmlPath = this.svgContent is not null
                                ? MermaidHtmlGenerator.GenerateWithSvg(this.svgContent, this.MermaidSource)
                                : MermaidHtmlGenerator.GenerateWithCdn(this.MermaidSource);
 
-        Process.Start(new ProcessStartInfo(htmlPath)
-        {
-            UseShellExecute = true,
-        });
+        var process = Process.Start(new ProcessStartInfo(htmlPath) { UseShellExecute = true });
 
-        return Task.CompletedTask;
+        if (process is null)
+        {
+            this.StatusMessage = "⚠️ Failed to open browser.";
+            return;
+        }
+
+        await process.WaitForExitAsync(ct);
     }
 
     private async Task CopySourceAsync(CancellationToken ct)
     {
         // Clipboard.SetText() requires STA — use clip.exe for thread safety
-        using var proc = new Process
+        using var proc = new Process();
+
+        proc.StartInfo = new("clip")
         {
-            StartInfo = new("clip")
-            {
-                RedirectStandardInput = true,
-                UseShellExecute = false,
-                CreateNoWindow = true,
-            },
+            RedirectStandardInput = true,
+            UseShellExecute = false,
+            CreateNoWindow = true,
         };
 
-        proc.Start();
-        await proc.StandardInput.WriteAsync(this.MermaidSource);
+        _ = proc.Start();
+        await proc.StandardInput.WriteAsync(this.MermaidSource.AsMemory(), ct);
         proc.StandardInput.Close();
         await proc.WaitForExitAsync(ct);
     }

@@ -35,22 +35,48 @@ class DagreLayoutEngine : ILayoutEngine
         // Apply positions back to diagram
         ApplyLayout(graph, diagram, options);
 
-        // Calculate bounds (don't add margin again - positions already include it)
+        // Normalize coordinates: shift all content so top-left starts at (0, 0).
+        // Dagre may center its layout in its own coordinate space, leaving
+        // whitespace before the first node. Subtracting the minimum left/top
+        // removes that whitespace; the renderer's Padding then adds breathing room.
+        var minLeft = double.MaxValue;
+        var minTop  = double.MaxValue;
+        foreach (var node in diagram.Nodes)
+        {
+            var left = node.Position.X - node.Width  / 2;
+            var top  = node.Position.Y - node.Height / 2;
+            if (left < minLeft) minLeft = left;
+            if (top  < minTop)  minTop  = top;
+        }
+
+        if (minLeft == double.MaxValue) minLeft = 0;
+        if (minTop  == double.MaxValue) minTop  = 0;
+
+        if (minLeft != 0 || minTop != 0)
+        {
+            foreach (var node in diagram.Nodes)
+            {
+                node.Position = new(node.Position.X - minLeft, node.Position.Y - minTop);
+            }
+
+            foreach (var edge in diagram.Edges)
+            {
+                for (var i = 0; i < edge.Points.Count; i++)
+                {
+                    edge.Points[i] = new(edge.Points[i].X - minLeft, edge.Points[i].Y - minTop);
+                }
+            }
+        }
+
+        // Calculate bounds after normalization
         var width = 0.0;
         var height = 0.0;
         foreach (var node in diagram.Nodes)
         {
-            var w = node.Position.X + node.Width / 2;
+            var w = node.Position.X + node.Width  / 2;
             var h = node.Position.Y + node.Height / 2;
-            if (w > width)
-            {
-                width = w;
-            }
-
-            if (h > height)
-            {
-                height = h;
-            }
+            if (w > width)  width  = w;
+            if (h > height) height = h;
         }
 
         return new()

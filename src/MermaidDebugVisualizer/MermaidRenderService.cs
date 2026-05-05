@@ -61,9 +61,7 @@ internal sealed class MermaidRenderService : IDisposable
                                  .Skip(20);
 
             foreach (var file in files)
-            {
                 File.Delete(file);
-            }
         }
         catch (Exception ex)
         {

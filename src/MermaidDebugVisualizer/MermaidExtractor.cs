@@ -40,14 +40,11 @@ internal static class MermaidExtractor
 
         // 2. Check for Markdown with ```mermaid block
         var mermaidSource = ExtractFromMarkdown(input);
-        if (mermaidSource != null)
-            return new(mermaidSource, true);
-
-        return null;
+        return mermaidSource != null ? new(mermaidSource, true) : null;
     }
 
-    private static bool IsRawMermaid(string text) =>
-            MermaidKeywords.Any(kw => text.StartsWith(kw, StringComparison.OrdinalIgnoreCase));
+    private static bool IsRawMermaid(string text)
+            => MermaidKeywords.Any(kw => text.StartsWith(kw, StringComparison.OrdinalIgnoreCase));
 
     private static string? ExtractFromMarkdown(string markdown)
     {
@@ -55,13 +52,10 @@ internal static class MermaidExtractor
 
         var mermaidBlock = document
                           .Descendants<FencedCodeBlock>()
-                          .FirstOrDefault(b => string.Equals(b.Info, "mermaid", StringComparison.OrdinalIgnoreCase));
-
-        if (mermaidBlock is null)
-            return null;
+                          .FirstOrDefault(static b => string.Equals(b.Info, "mermaid", StringComparison.OrdinalIgnoreCase));
 
         // Extract lines from the code block
-        return mermaidBlock.Lines.ToString().Trim();
+        return mermaidBlock?.Lines.ToString().Trim();
     }
 }
 

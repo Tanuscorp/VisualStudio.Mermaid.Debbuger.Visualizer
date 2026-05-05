@@ -20,13 +20,10 @@ internal sealed class MermaidVisualizerProvider : DebuggerVisualizerProvider
         VisualizerTarget visualizerTarget,
         CancellationToken cancellationToken)
     {
-        var rawValue = await visualizerTarget.ObjectSource
-                                             .RequestDataAsync<string>(null, cancellationToken);
+        var rawValue = await visualizerTarget.ObjectSource.RequestDataAsync<string>(null, cancellationToken);
 
         var mermaidContent = MermaidExtractor.Extract(rawValue);
-
         MermaidRenderService.CleanupTempFiles();
-
         return new MermaidVisualizerControl(mermaidContent, RenderService);
     }
 }
