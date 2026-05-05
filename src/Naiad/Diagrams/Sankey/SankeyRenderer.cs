@@ -1,0 +1,235 @@
+namespace Naiad.Diagrams.Sankey;
+
+public class SankeyRenderer : IDiagramRenderer<SankeyModel>
+{
+    const double nodeWidth = 20;
+    const double nodePadding = 10;
+    const double columnSpacing = 200;
+    const double minNodeHeight = 20;
+    const double titleHeight = 40;
+
+    static readonly string[] nodeColors =
+    [
+        "#4CAF50",
+        "#2196F3",
+        "#FF9800",
+        "#E91E63",
+        "#9C27B0",
+        "#00BCD4",
+        "#FF5722",
+        "#607D8B"
+    ];
+
+    public SvgDocument Render(SankeyModel model, RenderOptions options)
+    {
+        if (model.Links.Count == 0)
+        {
+            var emptyBuilder = new SvgBuilder().Size(200, 100);
+            emptyBuilder.AddText(
+                100, 50,
+                "Empty diagram",
+                anchor: "middle",
+                baseline: "middle",
+                fontSize: options.FontSize,
+                fontFamily: options.FontFamily);
+            return emptyBuilder.Build();
+        }
+
+        // Build node structure
+        var nodes = BuildNodes(model);
+        AssignColumns(nodes, model);
+
+        // Calculate scale
+        var maxColumn = nodes.Values.Max(_ => _.Column);
+        var totalValue = nodes.Values.Where(_ => _.Column == 0).Sum(_ => _.OutputValue);
+
+        var titleOffset = string.IsNullOrEmpty(model.Title) ? 0 : titleHeight;
+        var chartHeight = Math.Max(300, totalValue * 2);
+        var chartWidth = (maxColumn + 1) * columnSpacing;
+
+        var width = chartWidth + options.Padding * 2 + 100;
+        var height = chartHeight + options.Padding * 2 + titleOffset;
+
+        var builder = new SvgBuilder().Size(width, height);
+
+        // Draw title
+        if (!string.IsNullOrEmpty(model.Title))
+        {
+            builder.AddText(
+                width / 2,
+                options.Padding + titleHeight / 2,
+                model.Title,
+                anchor: "middle",
+                baseline: "middle",
+                fontSize: options.FontSize + 4,
+                fontFamily: options.FontFamily,
+                fontWeight: "bold");
+        }
+
+        // Position nodes
+        PositionNodes(nodes, chartHeight, titleOffset + options.Padding);
+
+        // Draw links first (behind nodes)
+        var sourceOffsets = new Dictionary<string, double>();
+        var targetOffsets = new Dictionary<string, double>();
+        foreach (var link in model.Links)
+        {
+            var sourceNode = nodes[link.Source];
+            var targetNode = nodes[link.Target];
+
+            var linkHeight = link.Value / Math.Max(1, sourceNode.OutputValue) * sourceNode.Height;
+            var sourceBand = link.Value / sourceNode.OutputValue * sourceNode.Height;
+            var targetBand = link.Value / targetNode.InputValue * targetNode.Height;
+
+            sourceOffsets.TryGetValue(link.Source, out var sOff);
+            targetOffsets.TryGetValue(link.Target, out var tOff);
+
+            var sourceY = sourceNode.Y + sOff + sourceBand / 2;
+            var targetY = targetNode.Y + tOff + targetBand / 2;
+
+            sourceOffsets[link.Source] = sOff + sourceBand;
+            targetOffsets[link.Target] = tOff + targetBand;
+
+            var sourceX = options.Padding + sourceNode.Column * columnSpacing + nodeWidth;
+            var targetX = options.Padding + targetNode.Column * columnSpacing;
+
+            // Draw bezier curve for link
+            var pathData = CreateLinkPath(sourceX, sourceY, targetX, targetY, linkHeight);
+            var colorIndex = Array.IndexOf(nodes.Keys.ToArray(), link.Source) % nodeColors.Length;
+            builder.AddPath(
+                pathData,
+                fill: nodeColors[colorIndex],
+                stroke: "none");
+        }
+
+        // Draw nodes
+        var nodeIndex = 0;
+        foreach (var (name, node) in nodes)
+        {
+            var x = options.Padding + node.Column * columnSpacing;
+            var color = nodeColors[nodeIndex % nodeColors.Length];
+
+            builder.AddRect(
+                x,
+                node.Y,
+                nodeWidth,
+                node.Height,
+                fill: color,
+                stroke: "#333",
+                strokeWidth: 1);
+
+            // Node label
+            var labelX = node.Column == maxColumn
+                ? x + nodeWidth + 5
+                : x - 5;
+            var anchor = node.Column == maxColumn ? "start" : "end";
+
+            builder.AddText(
+                labelX,
+                node.Y + node.Height / 2,
+                name,
+                anchor: anchor,
+                baseline: "middle",
+                fontSize: options.FontSize - 1,
+                fontFamily: options.FontFamily,
+                fill: "#333");
+
+            nodeIndex++;
+        }
+
+        return builder.Build();
+    }
+
+    static Dictionary<string, SankeyNode> BuildNodes(SankeyModel model)
+    {
+        var nodes = new Dictionary<string, SankeyNode>();
+
+        foreach (var link in model.Links)
+        {
+            if (!nodes.TryGetValue(link.Source, out var sourceValue))
+            {
+                sourceValue = new()
+                {
+                    Name = link.Source
+                };
+                nodes[link.Source] = sourceValue;
+            }
+            if (!nodes.TryGetValue(link.Target, out var targetValue))
+            {
+                targetValue = new()
+                {
+                    Name = link.Target
+                };
+                nodes[link.Target] = targetValue;
+            }
+
+            sourceValue.OutputValue += link.Value;
+            targetValue.InputValue += link.Value;
+        }
+
+        return nodes;
+    }
+
+    static void AssignColumns(Dictionary<string, SankeyNode> nodes, SankeyModel model)
+    {
+        // Find source nodes (no incoming links)
+        var links = model.Links;
+        var targets = links.Select(_ => _.Target).ToHashSet();
+        var sourceOnly = links.Select(_ => _.Source).Except(targets);
+
+        // BFS to assign columns
+        var queue = new Queue<string>();
+        foreach (var name in sourceOnly)
+        {
+            nodes[name].Column = 0;
+            queue.Enqueue(name);
+        }
+
+        while (queue.Count > 0)
+        {
+            var current = queue.Dequeue();
+            var currentColumn = nodes[current].Column;
+
+            foreach (var link in links.Where(_ => _.Source == current))
+            {
+                var targetNode = nodes[link.Target];
+                if (targetNode.Column <= currentColumn)
+                {
+                    targetNode.Column = currentColumn + 1;
+                    queue.Enqueue(link.Target);
+                }
+            }
+        }
+    }
+
+    static void PositionNodes(Dictionary<string, SankeyNode> nodes, double chartHeight, double topOffset)
+    {
+        var maxColumn = nodes.Values.Max(_ => _.Column);
+
+        for (var col = 0; col <= maxColumn; col++)
+        {
+            var columnNodes = nodes.Values.Where(_ => _.Column == col).ToList();
+            var totalValue = columnNodes.Sum(_ => Math.Max(_.InputValue, _.OutputValue));
+            var scale = (chartHeight - (columnNodes.Count - 1) * nodePadding) / Math.Max(1, totalValue);
+
+            var y = topOffset;
+            foreach (var node in columnNodes)
+            {
+                var value = Math.Max(node.InputValue, node.OutputValue);
+                node.Height = Math.Max(minNodeHeight, value * scale);
+                node.Y = y;
+                y += node.Height + nodePadding;
+            }
+        }
+    }
+
+    static string CreateLinkPath(double x1, double y1, double x2, double y2, double height)
+    {
+        var halfHeight = height / 2;
+        var cx = (x1 + x2) / 2;
+
+        return string.Create(
+            CultureInfo.InvariantCulture,
+            $"M {x1:0.##} {y1 - halfHeight:0.##} C {cx:0.##} {y1 - halfHeight:0.##} {cx:0.##} {y2 - halfHeight:0.##} {x2:0.##} {y2 - halfHeight:0.##} L {x2:0.##} {y2 + halfHeight:0.##} C {cx:0.##} {y2 + halfHeight:0.##} {cx:0.##} {y1 + halfHeight:0.##} {x1:0.##} {y1 + halfHeight:0.##} Z");
+    }
+}

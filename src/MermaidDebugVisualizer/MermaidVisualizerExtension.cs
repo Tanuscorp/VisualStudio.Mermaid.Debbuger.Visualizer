@@ -1,4 +1,4 @@
-namespace MermaidDebugVisualizer;
+namespace Mermaid.DebugVisualizer;
 
 using Microsoft.VisualStudio.Extensibility;
 

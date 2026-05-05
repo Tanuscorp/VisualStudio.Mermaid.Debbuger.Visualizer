@@ -1,0 +1,36 @@
+﻿// Global using directives
+
+global using System.Diagnostics;
+global using System.Diagnostics.CodeAnalysis;
+global using System.Globalization;
+global using System.Text;
+global using System.Text.RegularExpressions;
+global using Naiad;
+global using Naiad.Diagrams.Architecture;
+global using Naiad.Diagrams.Block;
+global using Naiad.Diagrams.C4;
+global using Naiad.Diagrams.Class;
+global using Naiad.Diagrams.EntityRelationship;
+global using Naiad.Diagrams.Flowchart;
+global using Naiad.Diagrams.Gantt;
+global using Naiad.Diagrams.GitGraph;
+global using Naiad.Diagrams.Kanban;
+global using Naiad.Diagrams.Mindmap;
+global using Naiad.Diagrams.Packet;
+global using Naiad.Diagrams.Pie;
+global using Naiad.Diagrams.Quadrant;
+global using Naiad.Diagrams.Radar;
+global using Naiad.Diagrams.Requirement;
+global using Naiad.Diagrams.Sankey;
+global using Naiad.Diagrams.Sequence;
+global using Naiad.Diagrams.State;
+global using Naiad.Diagrams.Timeline;
+global using Naiad.Diagrams.Treemap;
+global using Naiad.Diagrams.UserJourney;
+global using Naiad.Diagrams.XYChart;
+global using Naiad.Layout;
+global using Naiad.Models;
+global using Naiad.Rendering;
+global using Pidgin;
+global using static Pidgin.Parser;
+global using static Pidgin.Parser<char>;

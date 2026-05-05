@@ -3,5 +3,6 @@
     <Project Path="src/MermaidDebugVisualizer/MermaidDebugVisualizer.csproj">
       <Deploy Solution="Debug|*" />
     </Project>
+    <Project Path="src/Naiad/Naiad.csproj" />
   </Folder>
 </Solution>

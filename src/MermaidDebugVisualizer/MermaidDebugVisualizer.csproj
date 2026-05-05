@@ -4,7 +4,7 @@
     <TargetFramework>net8.0-windows</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <LangVersion>latest</LangVersion>
+    <LangVersion>preview</LangVersion>
     <RootNamespace>Mermaid.DebugVisualizer</RootNamespace>
     <AssemblyName>Mermaid.DebugVisualizer</AssemblyName>
   </PropertyGroup>
@@ -13,7 +13,6 @@
     <PackageReference Include="Microsoft.VisualStudio.Extensibility.Sdk" Version="17.14.40608" PrivateAssets="all" />
     <PackageReference Include="Microsoft.VisualStudio.Extensibility.Build" Version="17.14.40608" PrivateAssets="all" />
     <PackageReference Include="Markdig" Version="*" />
-    <PackageReference Include="Naiad" Version="*" />
     <PackageReference Include="Svg.Skia" Version="*" />
     <PackageReference Include="SkiaSharp" Version="*" />
     <PackageReference Include="SkiaSharp.NativeAssets.Win32" Version="*" />
@@ -21,8 +20,11 @@
 
   <ItemGroup>
     <Page Remove="MermaidVisualizerControl.xaml" />
-    <EmbeddedResource Include="MermaidVisualizerControl.xaml"
-                      LogicalName="$(RootNamespace).MermaidVisualizerControl.xaml" />
+    <EmbeddedResource Include="MermaidVisualizerControl.xaml" LogicalName="$(RootNamespace).MermaidVisualizerControl.xaml" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Naiad\Naiad.csproj" />
   </ItemGroup>
 
 </Project>

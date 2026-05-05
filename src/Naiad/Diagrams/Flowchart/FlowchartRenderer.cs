@@ -1,0 +1,230 @@
+namespace Naiad.Diagrams.Flowchart;
+
+using System.Net;
+
+public partial class FlowchartRenderer(ILayoutEngine? layoutEngine = null) : IDiagramRenderer<FlowchartModel>
+{
+    // Mermaid.ink default colors
+    private const string nodeFill = "#ECECFF";
+    private const string nodeStroke = "#9370DB";
+    private const string edgeStroke = "#333333";
+    private const string labelBackground = "rgba(232,232,232,0.8)";
+
+    // FontAwesome icon pattern: fa:fa-icon-name or fab:fa-icon-name
+    private static readonly Regex iconPattern = IconPatternMyRegex();
+    private readonly ILayoutEngine layoutEngine = layoutEngine ?? new DagreLayoutEngine();
+
+    public SvgDocument Render(FlowchartModel model, RenderOptions options)
+    {
+        // Calculate node sizes based on text
+        foreach (var node in model.Nodes)
+        {
+            var label = node.Label ?? node.Id;
+            var hasIcon = iconPattern.IsMatch(label);
+            var textForMeasure = hasIcon ? iconPattern.Replace(label, "") : label;
+            var textSize = MeasureText(textForMeasure, options.FontSize);
+            node.Width = textSize.Width + 30 + (hasIcon ? 20 : 0);
+            node.Height = textSize.Height + 27;
+
+            // Adjust size for different shapes
+            if (node.Shape is NodeShape.Circle or NodeShape.DoubleCircle)
+            {
+                var diameter = Math.Max(node.Width, node.Height);
+                node.Width = diameter;
+                node.Height = diameter;
+            }
+            else if (node.Shape == NodeShape.Diamond)
+            {
+                node.Width *= 1.4;
+                node.Height *= 1.4;
+            }
+        }
+
+        // Run layout
+        var layoutOptions = new LayoutOptions
+        {
+            Direction = model.Direction,
+            NodeSeparation = 50,
+            RankSeparation = 70,
+        };
+
+        var layoutResult = this.layoutEngine.Layout(model, layoutOptions);
+
+        // Build SVG
+        var builder = new SvgBuilder()
+                     .Size(layoutResult.Width, layoutResult.Height)
+                     .Padding(options.Padding)
+                     .AddMermaidArrowMarker()
+                     .AddMermaidCircleMarker()
+                     .AddMermaidCrossMarker();
+
+        // Add mermaid.ink CSS styles
+        builder.AddStyles(MermaidStyles.FlowchartStyles);
+
+        // Render edges first (behind nodes)
+        foreach (var edge in model.Edges)
+        {
+            RenderEdge(builder, edge);
+        }
+
+        // Render nodes
+        foreach (var node in model.Nodes)
+        {
+            RenderNode(builder, node);
+        }
+
+        return builder.Build();
+    }
+
+    [GeneratedRegex("(fa[bsr]?):fa-([a-z0-9-]+)", RegexOptions.Compiled)]
+    private static partial Regex IconPatternMyRegex();
+
+    private static void RenderNode(SvgBuilder builder, Node node)
+    {
+        var x = node.Position.X - node.Width / 2;
+        var y = node.Position.Y - node.Height / 2;
+
+        var shapePath = ShapePathGenerator.GetPath(node.Shape, x, y, node.Width, node.Height);
+
+        builder.AddPath(
+            shapePath,
+            nodeFill,
+            nodeStroke,
+            1);
+
+        // Render label with icon support
+        var label = node.Label ?? node.Id;
+        var htmlLabel = ConvertIconsToHtml(label);
+
+        builder.AddForeignObject(
+            x,
+            y,
+            node.Width,
+            node.Height,
+            htmlLabel,
+            "nodeLabel");
+    }
+
+    private static void RenderEdge(SvgBuilder builder, Edge edge)
+    {
+        if (edge.Points.Count < 2)
+        {
+            return;
+        }
+
+        // Build path from points
+        var points = edge.Points;
+        var pathBuilder = new StringBuilder();
+        pathBuilder.Append(CultureInfo.InvariantCulture, $"M{points[0].X:0.##},{points[0].Y:0.##}");
+
+        for (var i = 1; i < points.Count; i++)
+        {
+            pathBuilder.Append(CultureInfo.InvariantCulture, $" L{points[i].X:0.##},{points[i].Y:0.##}");
+        }
+
+        var pathData = pathBuilder.ToString();
+
+        var strokeDasharray = edge.LineStyle switch
+        {
+            EdgeStyle.Dotted => "2",
+            _ => null,
+        };
+
+        var strokeWidth = edge.LineStyle switch
+        {
+            EdgeStyle.Thick => 3.5,
+            _ => 2.0,
+        };
+
+        var markerEnd = edge.HasArrowHead ? "url(#mermaid-svg_flowchart-v2-pointEnd)" :
+                        edge.HasCircleEnd ? "url(#mermaid-svg_flowchart-v2-circleEnd)" :
+                        edge.HasCrossEnd ? "url(#mermaid-svg_flowchart-v2-crossEnd)" : null;
+
+        var markerStart = edge.HasArrowTail ? "url(#mermaid-svg_flowchart-v2-pointStart)" : null;
+
+        builder.AddPath(
+            pathData,
+            "none",
+            edgeStroke,
+            strokeWidth,
+            strokeDasharray,
+            markerEnd: markerEnd,
+            markerStart: markerStart,
+            cssClass: "flowchart-link");
+
+        // Render edge label if present
+        if (!string.IsNullOrEmpty(edge.Label))
+        {
+            var labelX = edge.LabelPosition.X;
+            var labelY = edge.LabelPosition.Y;
+            var labelWidth = edge.Label.Length * 8 + 16;
+            const int LabelHeight = 24;
+
+            builder.AddRect(
+                labelX - labelWidth / 2,
+                labelY - LabelHeight / 2,
+                labelWidth,
+                LabelHeight,
+                fill: labelBackground,
+                stroke: "none",
+                cssClass: "edgeLabel");
+
+            builder.AddForeignObject(
+                labelX - labelWidth / 2,
+                labelY - LabelHeight / 2,
+                labelWidth,
+                LabelHeight,
+                $"<p>{WebUtility.HtmlEncode(edge.Label)}</p>",
+                "edgeLabel");
+        }
+    }
+
+    /// <summary>
+    ///     Converts FontAwesome icon syntax (fa:fa-icon) to HTML elements.
+    /// </summary>
+    private static string ConvertIconsToHtml(string text)
+    {
+        if (!iconPattern.IsMatch(text))
+        {
+            return $"<p>{WebUtility.HtmlEncode(text)}</p>";
+        }
+
+        var span = text.AsSpan();
+
+        var html = new StringBuilder("<p>");
+        var lastIndex = 0;
+
+        foreach (var match in iconPattern.EnumerateMatches(text))
+        {
+            if (match.Index > lastIndex)
+            {
+                var textBefore = text[lastIndex..match.Index];
+                html.Append(WebUtility.HtmlEncode(textBefore));
+            }
+
+            var matched = span.Slice(match.Index, match.Length);
+            var colonIndex = matched.IndexOf(':');
+            var prefix = matched[..colonIndex];
+            var iconName = matched[(colonIndex + 4)..];
+            html.Append($"<i class=\"{prefix} fa-{iconName}\"></i>");
+
+            lastIndex = match.Index + match.Length;
+        }
+
+        // Add remaining text after last icon
+        if (lastIndex < text.Length)
+        {
+            html.Append(WebUtility.HtmlEncode(text[lastIndex..]));
+        }
+
+        html.Append("</p>");
+        return html.ToString();
+    }
+
+    private static Size MeasureText(ReadOnlySpan<char> text, double fontSize)
+    {
+        var width = text.Trim().Length * fontSize * 0.55;
+        var height = fontSize * 1.5;
+        return new(width, height);
+    }
+}

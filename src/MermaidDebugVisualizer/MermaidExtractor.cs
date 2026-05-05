@@ -1,11 +1,11 @@
-namespace MermaidDebugVisualizer;
+namespace Mermaid.DebugVisualizer;
 
 using Markdig;
 using Markdig.Syntax;
 
 /// <summary>
-/// Detects and extracts Mermaid diagram content from a string.
-/// Supports both raw Mermaid syntax and Markdown with fenced ```mermaid blocks.
+///     Detects and extracts Mermaid diagram content from a string.
+///     Supports both raw Mermaid syntax and Markdown with fenced ```mermaid blocks.
 /// </summary>
 internal static class MermaidExtractor
 {
@@ -24,8 +24,8 @@ internal static class MermaidExtractor
     private static readonly MarkdownPipeline MarkdownPipeline = new MarkdownPipelineBuilder().Build();
 
     /// <summary>
-    /// Attempts to extract Mermaid content from the given string.
-    /// Returns null if no Mermaid content is found.
+    ///     Attempts to extract Mermaid content from the given string.
+    ///     Returns null if no Mermaid content is found.
     /// </summary>
     public static MermaidContent? Extract(string? input)
     {
@@ -36,26 +36,26 @@ internal static class MermaidExtractor
 
         // 1. Check for raw Mermaid diagram
         if (IsRawMermaid(trimmed))
-            return new MermaidContent(trimmed, IsEmbeddedInMarkdown: false);
+            return new(trimmed, false);
 
         // 2. Check for Markdown with ```mermaid block
         var mermaidSource = ExtractFromMarkdown(input);
         if (mermaidSource != null)
-            return new MermaidContent(mermaidSource, IsEmbeddedInMarkdown: true);
+            return new(mermaidSource, true);
 
         return null;
     }
 
     private static bool IsRawMermaid(string text) =>
-        MermaidKeywords.Any(kw => text.StartsWith(kw, StringComparison.OrdinalIgnoreCase));
+            MermaidKeywords.Any(kw => text.StartsWith(kw, StringComparison.OrdinalIgnoreCase));
 
     private static string? ExtractFromMarkdown(string markdown)
     {
         var document = Markdown.Parse(markdown, MarkdownPipeline);
 
         var mermaidBlock = document
-            .Descendants<FencedCodeBlock>()
-            .FirstOrDefault(b => string.Equals(b.Info, "mermaid", StringComparison.OrdinalIgnoreCase));
+                          .Descendants<FencedCodeBlock>()
+                          .FirstOrDefault(b => string.Equals(b.Info, "mermaid", StringComparison.OrdinalIgnoreCase));
 
         if (mermaidBlock is null)
             return null;
