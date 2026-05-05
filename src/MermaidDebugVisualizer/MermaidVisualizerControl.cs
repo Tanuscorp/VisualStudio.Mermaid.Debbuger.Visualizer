@@ -8,8 +8,8 @@ using Microsoft.VisualStudio.Extensibility.UI;
 /// </summary>
 internal sealed class MermaidVisualizerControl : RemoteUserControl
 {
-    public MermaidVisualizerControl(MermaidContent? content, string? pngPath)
-        : base(new MermaidDataContext(content, pngPath))
+    public MermaidVisualizerControl(MermaidContent? content, MermaidRenderService renderService)
+        : base(new MermaidDataContext(content, renderService))
     {
     }
 }

@@ -1,6 +1,7 @@
 namespace MermaidDebugVisualizer;
 
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Runtime.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
@@ -8,7 +9,7 @@ using Microsoft.VisualStudio.Extensibility.UI;
 
 /// <summary>
 /// Data context (ViewModel) for the Mermaid visualizer Remote UI control.
-/// Receives a pre-rendered PNG path from the provider (rendered in an isolated child process).
+/// Renders the Mermaid diagram on construction and exposes it as a file URI for Image binding.
 /// </summary>
 [DataContract]
 internal sealed class MermaidDataContext : NotifyPropertyChangedObject
@@ -19,7 +20,7 @@ internal sealed class MermaidDataContext : NotifyPropertyChangedObject
     private bool _hasRenderedImage;
     private string? _diagramImageUri;
 
-    public MermaidDataContext(MermaidContent? content, string? pngPath)
+    public MermaidDataContext(MermaidContent? content, MermaidRenderService renderService)
     {
         if (content is null)
         {
@@ -32,6 +33,8 @@ internal sealed class MermaidDataContext : NotifyPropertyChangedObject
             MermaidSource = content.Source;
             HasMermaidContent = true;
 
+            // Render synchronously (Naiad is fast, typically <200ms)
+            var pngPath = renderService.RenderToPng(content.Source);
             if (pngPath is not null)
             {
                 DiagramImageUri = new Uri(pngPath).AbsoluteUri;
@@ -39,10 +42,12 @@ internal sealed class MermaidDataContext : NotifyPropertyChangedObject
                 StatusMessage = content.IsEmbeddedInMarkdown
                     ? "Mermaid diagram (extracted from Markdown)"
                     : "Mermaid diagram";
+                _svgContent = renderService.RenderToSvg(content.Source);
             }
             else
             {
                 StatusMessage = "⚠️ Rendering failed — use 'Open in Browser' to view the diagram.";
+                _svgContent = null;
             }
         }
 
@@ -80,7 +85,7 @@ internal sealed class MermaidDataContext : NotifyPropertyChangedObject
 
     /// <summary>
     /// File URI pointing to the rendered PNG (e.g., "file:///C:/Temp/MermaidVisualizer/abc.png").
-    /// Bound to the XAML Image.Source — WPF ImageSourceConverter handles string→BitmapImage.
+    /// Bound to the XAML Image.Source.
     /// </summary>
     [DataMember]
     public string? DiagramImageUri
@@ -95,17 +100,22 @@ internal sealed class MermaidDataContext : NotifyPropertyChangedObject
     [DataMember]
     public IAsyncCommand CopySourceCommand { get; }
 
+    // Not a DataMember — only used internally for the browser fallback
+    private readonly string? _svgContent;
+
     private Task OpenInBrowserAsync(CancellationToken ct)
     {
-        // Always use Mermaid.js CDN for browser rendering — handles Unicode and all diagram types
-        var htmlPath = MermaidHtmlGenerator.GenerateWithCdn(MermaidSource);
+        var htmlPath = _svgContent is not null
+            ? MermaidHtmlGenerator.GenerateWithSvg(_svgContent, MermaidSource)
+            : MermaidHtmlGenerator.GenerateWithCdn(MermaidSource);
+
         Process.Start(new ProcessStartInfo(htmlPath) { UseShellExecute = true });
         return Task.CompletedTask;
     }
 
     private async Task CopySourceAsync(CancellationToken ct)
     {
-        // Clipboard.SetText() requires STA thread — use clip.exe as a workaround
+        // Clipboard.SetText() requires STA — use clip.exe for thread safety
         using var proc = new Process
         {
             StartInfo = new ProcessStartInfo("clip")

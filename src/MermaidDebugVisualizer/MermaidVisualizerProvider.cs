@@ -12,12 +12,8 @@ using Microsoft.VisualStudio.RpcContracts.RemoteUI;
 [VisualStudioContribution]
 internal sealed class MermaidVisualizerProvider : DebuggerVisualizerProvider
 {
+    // Static service instance — lightweight, no DI injection needed
     private static readonly MermaidRenderService RenderService = new();
-
-    public MermaidVisualizerProvider(MermaidVisualizerExtension extension, VisualStudioExtensibility extensibility)
-        : base(extension, extensibility)
-    {
-    }
 
     public override DebuggerVisualizerProviderConfiguration DebuggerVisualizerProviderConfiguration =>
         new("%MermaidDebugVisualizer.MermaidVisualizerProvider.DisplayName%", typeof(string));
@@ -26,18 +22,13 @@ internal sealed class MermaidVisualizerProvider : DebuggerVisualizerProvider
         VisualizerTarget visualizerTarget,
         CancellationToken cancellationToken)
     {
-        MermaidRenderService.CleanupTempFiles();
-
         var rawValue = await visualizerTarget.ObjectSource
             .RequestDataAsync<string>(jsonSerializer: null, cancellationToken);
 
         var mermaidContent = MermaidExtractor.Extract(rawValue);
 
-        // Render to PNG in child process — crash-safe (SOE in renderer won't kill extension host)
-        string? pngPath = null;
-        if (mermaidContent is not null)
-            pngPath = await RenderService.RenderToPngAsync(mermaidContent.Source, cancellationToken);
+        MermaidRenderService.CleanupTempFiles();
 
-        return new MermaidVisualizerControl(mermaidContent, pngPath);
+        return new MermaidVisualizerControl(mermaidContent, RenderService);
     }
 }
