@@ -42,7 +42,14 @@ VsixPublisher.exe publish `
 ```
 
 The GitHub **Release** workflow (`.github/workflows/release.yml`) automates build +
-publish when you push a `v*` tag, provided the `VS_MARKETPLACE_PAT` secret is set.
+publish. Trigger it either way:
+
+- **Push a `v*` tag** (e.g. `git push origin v0.1.0`), or
+- **Actions → Release → Run workflow**, entering the version (e.g. `0.1.0`). The
+  workflow then creates the `v0.1.0` tag at the chosen commit itself.
+
+The Marketplace publish step runs only when the `VS_MARKETPLACE_PAT` secret is set;
+otherwise it is skipped and only the GitHub Release + `.vsix` artifact are produced.
 
 ## Versioning
 
@@ -53,7 +60,7 @@ Set it per release via `<Version>` in `MermaidDebugVisualizer.csproj` (or pass
 
 ## Pre-publish checklist
 
-- [ ] `publisher` set in `publish-manifest.json` to your real Marketplace publisher ID.
+- [x] `publisher` set in `publish-manifest.json` to your real Marketplace publisher ID (`74nu5`).
 - [ ] `VS_MARKETPLACE_PAT` secret configured (for CI) or exported locally.
 - [ ] Version bumped and `CHANGELOG.md` updated; commit tagged `vx.y.z`.
 - [ ] `dotnet test src/Naiad.Tests/Naiad.Tests.csproj` is green.
