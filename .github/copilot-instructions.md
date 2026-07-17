@@ -9,9 +9,15 @@ dotnet build MermaidVisualizer.slnx
 # Build a specific project
 dotnet build src/Naiad/Naiad.csproj
 dotnet build src/MermaidDebugVisualizer/MermaidDebugVisualizer.csproj
+
+# Run the engine tests (xUnit)
+dotnet test src/Naiad.Tests/Naiad.Tests.csproj
 ```
 
-There are no automated tests or linting commands in this repository.
+`Naiad.Tests` holds smoke + structural tests covering every diagram type. The
+`MermaidDebugVisualizer` extension project targets `net8.0-windows` and can only be
+built on Windows (VS extension development workload). CI runs on `windows-latest`
+(see `.github/workflows/`).
 
 ## Architecture
 
@@ -40,7 +46,7 @@ Graph-based diagrams (Flowchart, Class, State, ER, etc.) use a Dagre-inspired la
 3. Add a `global using` for the new namespace in `Naiad/GlobalUsings.cs`.
 4. Add type detection in `Mermaid.DetectDiagramType()` (first-line keyword check).
 5. Add a `RenderXxx()` private method in `Mermaid.cs` and wire it into the switch.
-6. Add the triggering keyword(s) to `MermaidExtractor.MermaidKeywords` in the visualizer project.
+6. Add the triggering keyword(s) to `Mermaid.DetectFromFirstLine()` (used by both `Render` and the public `TryDetectDiagramType`). The visualizer's `MermaidExtractor` delegates to `TryDetectDiagramType`, so no change is needed there — the two can't drift.
 
 ### Parsers (Pidgin)
 

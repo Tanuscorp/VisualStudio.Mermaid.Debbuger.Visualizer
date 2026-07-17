@@ -3,24 +3,14 @@ namespace Mermaid.DebugVisualizer;
 using Markdig;
 using Markdig.Syntax;
 
+using Naiad;
+
 /// <summary>
 ///     Detects and extracts Mermaid diagram content from a string.
 ///     Supports both raw Mermaid syntax and Markdown with fenced ```mermaid blocks.
 /// </summary>
 internal static class MermaidExtractor
 {
-    // Mermaid diagram type keywords (must appear at the start of a raw diagram)
-    private static readonly string[] MermaidKeywords =
-    [
-        "graph ", "graph\n", "graph\r",
-        "flowchart ", "flowchart\n",
-        "sequenceDiagram", "classDiagram", "stateDiagram", "stateDiagram-v2",
-        "erDiagram", "gantt", "pie ", "pie\n",
-        "journey", "gitGraph", "mindmap", "timeline",
-        "xychart-beta", "block-beta", "packet-beta", "architecture-beta",
-        "requirementDiagram", "C4Context", "C4Container", "C4Component",
-    ];
-
     private static readonly MarkdownPipeline MarkdownPipeline = new MarkdownPipelineBuilder().Build();
 
     /// <summary>
@@ -43,8 +33,10 @@ internal static class MermaidExtractor
         return mermaidSource != null ? new(mermaidSource, true) : null;
     }
 
+    // Delegate to Naiad's detector so the set of recognized diagram types never drifts
+    // from what the renderer can actually draw.
     private static bool IsRawMermaid(string text)
-            => MermaidKeywords.Any(kw => text.StartsWith(kw, StringComparison.OrdinalIgnoreCase));
+            => Mermaid.TryDetectDiagramType(text, out _);
 
     private static string? ExtractFromMarkdown(string markdown)
     {

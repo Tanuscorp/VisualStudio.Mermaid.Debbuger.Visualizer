@@ -40,28 +40,57 @@ public static class Mermaid
         };
     }
 
+    /// <summary>
+    ///     Attempts to detect the Mermaid diagram type from the first meaningful line of
+    ///     <paramref name="input" />, skipping any leading <c>%%{init:...}%%</c> blocks.
+    ///     Returns <see langword="false" /> (instead of throwing) when the type is not recognized.
+    ///     This is the single source of truth for "is this string a renderable Mermaid diagram?"
+    ///     and is consumed both by rendering and by the debugger visualizer's content detection.
+    /// </summary>
+    public static bool TryDetectDiagramType(string input, out DiagramType type)
+    {
+        type = default;
+        if (string.IsNullOrWhiteSpace(input))
+            return false;
+
+        var detected = DetectFromFirstLine(SkipInitBlocks(input));
+        if (detected is null)
+            return false;
+
+        type = detected.Value;
+        return true;
+    }
+
     private static DiagramType DetectDiagramType(string input)
     {
-        var firstLine = input.TrimStart();
+        if (TryDetectDiagramType(input, out var type))
+            return type;
 
-        // Skip %%{init:...}%% configuration blocks
-        while (firstLine.StartsWith("%%{", StringComparison.Ordinal))
+        var firstLine = SkipInitBlocks(input);
+        throw new MermaidException($"Unknown diagram type in: {firstLine.Split('\n')[0]}");
+    }
+
+    /// <summary>Skips leading <c>%%{init:...}%%</c> configuration blocks and returns the remainder, left-trimmed.</summary>
+    private static string SkipInitBlocks(string input)
+    {
+        var remainder = input.TrimStart();
+
+        while (remainder.StartsWith("%%{", StringComparison.Ordinal))
         {
-            // Find end of init block and move to next line
-            var endIndex = firstLine.IndexOf("}%%", StringComparison.Ordinal);
+            var endIndex = remainder.IndexOf("}%%", StringComparison.Ordinal);
             if (endIndex < 0)
                 break;
 
-            firstLine = firstLine[(endIndex + 3)..].TrimStart();
-
-            // Skip past any newline
-            var newlineIndex = firstLine.IndexOfAny(['\r', '\n']);
-            if (newlineIndex >= 0)
-            {
-                firstLine = firstLine[(newlineIndex + 1)..].TrimStart();
-            }
+            // TrimStart() already consumes the newline(s) between the init block and the
+            // diagram keyword, so land directly on the first meaningful content.
+            remainder = remainder[(endIndex + 3)..].TrimStart();
         }
 
+        return remainder;
+    }
+
+    private static DiagramType? DetectFromFirstLine(string firstLine)
+    {
         if (firstLine.StartsWith("pie", StringComparison.OrdinalIgnoreCase))
             return DiagramType.Pie;
 
@@ -141,7 +170,7 @@ public static class Mermaid
             firstLine.StartsWith("treemap", StringComparison.OrdinalIgnoreCase))
             return DiagramType.Treemap;
 
-        throw new MermaidException($"Unknown diagram type in: {firstLine.Split('\n')[0]}");
+        return null;
     }
 
     /// <summary>

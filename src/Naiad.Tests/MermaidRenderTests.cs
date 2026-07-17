@@ -644,4 +644,45 @@ public class MermaidRenderTests
         var svg = Render(input);
         AssertContainsLabels(svg, "Slices", "A", "B");
     }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // TryDetectDiagramType — single source of truth for "is this Mermaid?"
+    // (also consumed by the debugger visualizer's content detection)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    [Theory]
+    [InlineData("flowchart TD\n  A-->B", DiagramType.Flowchart)]
+    [InlineData("graph LR\n  A-->B", DiagramType.Flowchart)]
+    [InlineData("sequenceDiagram\n  A->>B: hi", DiagramType.Sequence)]
+    [InlineData("classDiagram\n  class A", DiagramType.Class)]
+    [InlineData("stateDiagram-v2\n  [*]-->A", DiagramType.State)]
+    [InlineData("pie title T\n  \"A\": 1", DiagramType.Pie)]
+    // Types that used to be missing from the visualizer's raw-detection keyword list:
+    [InlineData("quadrantChart\n  title Q", DiagramType.Quadrant)]
+    [InlineData("sankey-beta\n\nA,B,1", DiagramType.Sankey)]
+    [InlineData("kanban\n  Todo", DiagramType.Kanban)]
+    [InlineData("radar-beta", DiagramType.Radar)]
+    [InlineData("treemap-beta\n  \"Root\"", DiagramType.Treemap)]
+    [InlineData("C4Deployment\n  title D", DiagramType.C4Deployment)]
+    public void TryDetectDiagramType_RecognizesRawSyntax(string input, DiagramType expected)
+    {
+        Assert.True(Mermaid.TryDetectDiagramType(input, out var type));
+        Assert.Equal(expected, type);
+    }
+
+    [Fact]
+    public void TryDetectDiagramType_SkipsInitBlock()
+    {
+        const string input = "%%{init: {\"theme\": \"dark\"}}%%\nflowchart TD\n  A-->B";
+        Assert.True(Mermaid.TryDetectDiagramType(input, out var type));
+        Assert.Equal(DiagramType.Flowchart, type);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("just some random string")]
+    [InlineData("{ \"json\": true }")]
+    public void TryDetectDiagramType_ReturnsFalseForNonMermaid(string input)
+        => Assert.False(Mermaid.TryDetectDiagramType(input, out _));
 }
