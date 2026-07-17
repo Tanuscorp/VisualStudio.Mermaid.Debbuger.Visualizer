@@ -12,10 +12,9 @@ using Svg.Skia;
 /// <summary>
 ///     Renders Mermaid diagrams using Naiad (Mermaid → SVG) and SkiaSharp (SVG → PNG).
 /// </summary>
-internal sealed class MermaidRenderService : IDisposable
+internal sealed class MermaidRenderService
 {
     private static readonly string TempDir = Path.Combine(Path.GetTempPath(), "MermaidVisualizer");
-    private bool disposed;
 
     static MermaidRenderService()
     {
@@ -50,23 +49,31 @@ internal sealed class MermaidRenderService : IDisposable
         => Directory.CreateDirectory(TempDir);
 
     /// <summary>
-    ///     Cleans up old PNG files from the temp directory (keeps last 20).
+    ///     Cleans up old generated files from the temp directory (keeps the 20 most recent of each
+    ///     kind). Covers both the rendered PNGs and the HTML files produced by "Open in Browser",
+    ///     which would otherwise accumulate indefinitely.
     /// </summary>
     public static void CleanupTempFiles()
     {
-        try
-        {
-            var files = Directory.GetFiles(TempDir, "*.png")
-                                 .OrderByDescending(File.GetCreationTime)
-                                 .Skip(20);
+        if (!Directory.Exists(TempDir))
+            return;
 
-            foreach (var file in files)
-                File.Delete(file);
-        }
-        catch (Exception ex)
+        foreach (var pattern in new[] { "*.png", "*.html" })
         {
-            Debug.WriteLine($"Error rendering cleanup files: {ex}");
-            /* best-effort cleanup */
+            try
+            {
+                var stale = Directory.GetFiles(TempDir, pattern)
+                                     .OrderByDescending(File.GetCreationTime)
+                                     .Skip(20);
+
+                foreach (var file in stale)
+                    File.Delete(file);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error cleaning up temp files ({pattern}): {ex}");
+                /* best-effort cleanup */
+            }
         }
     }
 
@@ -108,14 +115,6 @@ internal sealed class MermaidRenderService : IDisposable
         {
             Debug.WriteLine($"Error rendering Mermaid diagram to PNG: {ex}");
             return (null, svg);
-        }
-    }
-
-    public void Dispose()
-    {
-        if (!this.disposed)
-        {
-            this.disposed = true;
         }
     }
 

@@ -23,6 +23,13 @@
     <EmbeddedResource Include="MermaidVisualizerControl.xaml" LogicalName="$(RootNamespace).MermaidVisualizerControl.xaml" />
   </ItemGroup>
 
+  <!-- Marketplace assets shipped inside the .vsix and referenced from ExtensionConfiguration.Metadata. -->
+  <ItemGroup>
+    <Content Include="Resources\icon.png" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Resources\preview.png" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\LICENSE" Link="LICENSE.txt" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\Naiad\Naiad.csproj" />
   </ItemGroup>

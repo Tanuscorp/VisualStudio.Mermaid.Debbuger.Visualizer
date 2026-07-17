@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: [master, "claude/**"]
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore
+        run: dotnet restore MermaidVisualizer.slnx
+
+      - name: Build (Release)
+        run: dotnet build MermaidVisualizer.slnx -c Release --no-restore
+
+      - name: Test (Naiad engine)
+        run: dotnet test src/Naiad.Tests/Naiad.Tests.csproj -c Release --no-build --verbosity normal
+
+      - name: Collect VSIX
+        shell: pwsh
+        run: |
+          $vsix = Get-ChildItem -Recurse -Filter *.vsix -Path src/MermaidDebugVisualizer/bin/Release |
+                  Select-Object -First 1
+          if ($null -eq $vsix) { Write-Error "No .vsix produced"; exit 1 }
+          Write-Host "Built: $($vsix.FullName)"
+          "VSIX_PATH=$($vsix.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Upload VSIX artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: vsix
+          path: ${{ env.VSIX_PATH }}
+          if-no-files-found: error
