@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="src/MermaidDebugVisualizer/Resources/icon.png" width="112" alt="Mermaid Diagram Debugger Visualizer" />
+<img src="https://raw.githubusercontent.com/Tanuscorp/VisualStudio.Mermaid.Debbuger.Visualizer/master/src/MermaidDebugVisualizer/Resources/icon.png" width="112" alt="Mermaid Diagram Debugger Visualizer" />
 
 # Mermaid Diagram Debugger Visualizer
 
