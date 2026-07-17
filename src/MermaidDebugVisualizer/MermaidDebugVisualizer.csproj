@@ -27,7 +27,9 @@
   <ItemGroup>
     <Content Include="Resources\icon.png" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="Resources\preview.png" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="..\..\LICENSE" Link="LICENSE.txt" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Physical copy inside the project cone so VSSDK places it at the vsix root as LICENSE.txt
+         (a Link'd file from outside the project cone is not added to the package file list). -->
+    <Content Include="LICENSE.txt" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>
