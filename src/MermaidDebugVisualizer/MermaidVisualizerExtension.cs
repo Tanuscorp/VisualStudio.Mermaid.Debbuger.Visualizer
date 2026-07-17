@@ -26,7 +26,11 @@ internal class MermaidVisualizerExtension : Extension
             MoreInfo = "https://github.com/tanuscorp/VisualStudio.Mermaid.Debbuger.Visualizer",
             ReleaseNotes =
                 "https://github.com/tanuscorp/VisualStudio.Mermaid.Debbuger.Visualizer/blob/master/CHANGELOG.md",
-            Tags = "mermaid diagram debugger visualizer flowchart sequence class state uml svg debugging",
+            Tags =
+            [
+                "mermaid", "diagram", "debugger", "visualizer", "flowchart",
+                "sequence", "class", "state", "uml", "svg", "debugging",
+            ],
         },
     };
 }
