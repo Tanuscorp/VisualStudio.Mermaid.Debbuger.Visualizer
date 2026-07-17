@@ -73,22 +73,20 @@ public static class Mermaid
     /// <summary>Skips leading <c>%%{init:...}%%</c> configuration blocks and returns the remainder, left-trimmed.</summary>
     private static string SkipInitBlocks(string input)
     {
-        var firstLine = input.TrimStart();
+        var remainder = input.TrimStart();
 
-        while (firstLine.StartsWith("%%{", StringComparison.Ordinal))
+        while (remainder.StartsWith("%%{", StringComparison.Ordinal))
         {
-            var endIndex = firstLine.IndexOf("}%%", StringComparison.Ordinal);
+            var endIndex = remainder.IndexOf("}%%", StringComparison.Ordinal);
             if (endIndex < 0)
                 break;
 
-            firstLine = firstLine[(endIndex + 3)..].TrimStart();
-
-            var newlineIndex = firstLine.IndexOfAny(['\r', '\n']);
-            if (newlineIndex >= 0)
-                firstLine = firstLine[(newlineIndex + 1)..].TrimStart();
+            // TrimStart() already consumes the newline(s) between the init block and the
+            // diagram keyword, so land directly on the first meaningful content.
+            remainder = remainder[(endIndex + 3)..].TrimStart();
         }
 
-        return firstLine;
+        return remainder;
     }
 
     private static DiagramType? DetectFromFirstLine(string firstLine)
