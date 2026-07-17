@@ -9,7 +9,7 @@
   },
   "overview": "README.md",
   "priceCategory": "free",
-  "publisher": "REPLACE_WITH_YOUR_MARKETPLACE_PUBLISHER_ID",
+  "publisher": "74nu5",
   "private": false,
   "qna": true,
   "repo": "https://github.com/tanuscorp/VisualStudio.Mermaid.Debbuger.Visualizer"

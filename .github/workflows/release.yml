@@ -52,6 +52,11 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          # Explicit tag so the workflow works both on tag pushes and on manual
+          # workflow_dispatch runs (which check out a branch, not a tag). On dispatch
+          # this creates the tag at the checked-out commit.
+          tag_name: v${{ steps.version.outputs.value }}
+          target_commitish: ${{ github.sha }}
           files: ${{ steps.vsix.outputs.path }}
           generate_release_notes: true
 
